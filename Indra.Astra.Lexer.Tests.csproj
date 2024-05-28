@@ -18,6 +18,7 @@
 
   <ItemGroup>
     <ProjectReference Include="..\..\..\libs\lexer\Indra.Astra.Lexer\Indra.Astra.Lexer.csproj" />
+    <ProjectReference Include="..\..\..\..\..\..\libs\utils\cs\Meep.Tech.Extensions.Text\Meep.Tech.Extensions.Text.csproj" />
   </ItemGroup>
 
   <ItemGroup>

@@ -1,3 +1,5 @@
+using Meep.Tech.Text;
+
 using static Indra.Astra.Lexer;
 
 namespace Indra.Astra.Tests {
@@ -40,8 +42,17 @@ namespace Indra.Astra.Tests {
 
         Token single;
         if(result is Success) {
-          Assert.Equal(2, result.Tokens.Length);
-          single = result.Tokens[0];
+          int expectedTokens = 2;
+          int expectedIndents = 0;
+          while(result.Source[expectedIndents].IsWhiteSpace()) {
+            expectedIndents++;
+          }
+
+          expectedTokens += expectedIndents;
+
+
+          Assert.Equal(expectedTokens, result.Tokens.Length);
+          single = result.Tokens[expectedIndents];
         }
         else {
           single = Assert.Single(result.Tokens);
