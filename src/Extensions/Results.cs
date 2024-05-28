@@ -33,35 +33,43 @@ namespace Indra.Astra.Tests {
 
     public static Token Assert_IsSingle(
         this Result result,
-        TokenType tokenType,
+        TokenType type,
         string? text = null,
-        (int start, int end)? position = null
+        (int start, int end)? position = null,
+        TokenType[]? ignore = null
     ) {
       Tokens._assert(result, result => {
         Assert.NotNull(result.Tokens);
 
-        Token single;
+        Token single = null!;
         if(result is Success) {
-          int expectedTokens = 2;
-          int expectedIndents = 0;
-          while(result.Source[expectedIndents].IsWhiteSpace()) {
-            expectedIndents++;
+          foreach(Token token in result.Tokens) {
+            if(token.Type.IsWhiteSpace() || (ignore is not null && ignore.Contains(token.Type))) {
+              continue;
+            }
+            else if(single is not null) {
+              Assert.Fail($"Unexpected second non-ws token of type: {token.Name}, found in what should be a single non-ws-token result.");
+            }
+            else {
+              single = token;
+            }
           }
 
-          expectedTokens += expectedIndents;
-
-
-          Assert.Equal(expectedTokens, result.Tokens.Length);
-          single = result.Tokens[expectedIndents];
+          Assert.Equal(TokenType.EOF, result.Tokens[^1].Type);
         }
         else {
           single = Assert.Single(result.Tokens);
         }
 
-        single.Assert_Is(result, tokenType, text, position);
-      }, $"Result does not contain a single token {(
+        if(single is null) {
+          Assert.Fail($"No token of type: {type} found in result.");
+        }
+        else {
+          single.Assert_Is(result, type, text, position);
+        }
+      }, $"Result does not contain a single valid token {(
           result is Success ? "followed by EOF" : ""
-      )}.\n\tExpected: {tokenType}, EOF.\n\tActual: {string.Join(
+      )}.\n\tExpected: {type}, EOF.\n\tActual: {string.Join(
           ", ", result.Tokens?.Select(t => t.Name) ?? []
       )}.");
 
