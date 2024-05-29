@@ -1,4 +1,4 @@
-using Meep.Tech.Text;
+using System.Diagnostics.CodeAnalysis;
 
 using static Indra.Astra.Lexer;
 
@@ -8,7 +8,10 @@ namespace Indra.Astra.Tests {
       Tokens._assert(
           result,
           result => Assert.True(result.IsSuccess),
-          $"Expected success, but encountered unexpected error(s).\n\t{string.Join("\n\t", result.Errors?.Select(e => e.Message) ?? [])}"
+          $"Expected success, but encountered unexpected error(s).\n\t{string.Join(
+            "\n\t",
+            result.Errors?.Select(e => e.Message) ?? []
+          )}"
       );
 
       return Assert.IsType<Success>(result);
@@ -41,31 +44,14 @@ namespace Indra.Astra.Tests {
       Tokens._assert(result, result => {
         Assert.NotNull(result.Tokens);
 
-        Token single = null!;
-        if(result is Success) {
-          foreach(Token token in result.Tokens) {
-            if(token.Type.IsWhiteSpace() || (ignore is not null && ignore.Contains(token.Type))) {
-              continue;
-            }
-            else if(single is not null) {
-              Assert.Fail($"Unexpected second non-ws token of type: {token.Name}, found in what should be a single non-ws-token result.");
-            }
-            else {
-              single = token;
-            }
-          }
-
-          Assert.Equal(TokenType.EOF, result.Tokens[^1].Type);
+        if(result.IsSingle(out Token? found, ignore)) {
+          found.Assert_Is(result, type, text, position);
         }
-        else {
-          single = Assert.Single(result.Tokens);
-        }
-
-        if(single is null) {
+        else if(found is null) {
           Assert.Fail($"No token of type: {type} found in result.");
         }
         else {
-          single.Assert_Is(result, type, text, position);
+          Assert.Fail($"Unexpected second non-ws token of type: {found.Name}, found in what should be a single non-ws-token result.");
         }
       }, $"Result does not contain a single valid token {(
           result is Success ? "followed by EOF" : ""
@@ -74,6 +60,32 @@ namespace Indra.Astra.Tests {
       )}.");
 
       return result.Tokens![0];
+    }
+
+    public static bool IsSingle(this Result result, [NotNullWhen(true)] out Token? found, TokenType[]? ignore = null) {
+      found = null;
+      if(result is Success success) {
+        foreach(Token token in success.Tokens) {
+          if(token.Type.IsWhiteSpace() || (ignore is not null && ignore.Contains(token.Type))) {
+            continue;
+          }
+          else if(found is not null) {
+            found = token;
+            return false;
+          }
+          else {
+            found = token;
+          }
+        }
+
+        Assert.Equal(TokenType.EOF, success.Tokens[^1].Type);
+      }
+      else {
+        Assert.NotNull(result.Tokens);
+        found = Assert.Single(result.Tokens);
+      }
+
+      return found is not null;
     }
   }
 }

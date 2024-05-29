@@ -147,43 +147,51 @@ namespace Indra.Astra.Tests {
                 NewLines = NewLine_Left | NewLine_Right,
                 NewLine_Left = 64,
                 NewLine_Right = 128,
-                Some = Some_Left | Some_Right,
-                Some_Left = Space_Left | Tab_Left | NewLine_Left,
-                Some_Right = Space_Right | Tab_Right | NewLine_Right,
-                Any = Some | None,
-                Any_Left = Some_Left | None_Left,
-                Any_Right = Some_Right | None_Right
+                Around = Left | Right,
+                Left = Space_Left | Tab_Left | NewLine_Left,
+                Right = Space_Right | Tab_Right | NewLine_Right,
+                Optional = Around | None,
+                Optional_Left = Left | None_Left,
+                Optional_Right = Right | None_Right
             }
 
             /// <summary>
             /// Test that a token is correctly identified when it is the only non-whitespace token in the input.
             /// </summary>
             [Theory]
-            // Separators
-            [InlineData(",", TokenType.COMMA)]
-            [InlineData(";", TokenType.SEMICOLON)]
+            // Comments
+            [InlineData("#", TokenType.EOL_HASH_COMMENT, Padding.Around)]
+            [InlineData("##", TokenType.DOC_HASH_COMMENT, Padding.None_Left | Padding.Around)]
+            [InlineData("//", TokenType.EOL_SLASH_COMMENT, Padding.None_Left | Padding.Around)]
 
             // Underscores
             [InlineData("_", TokenType.UNDERSCORE)]
             [InlineData("__", TokenType.DOUBLE_UNDERSCORE)]
             [InlineData("___", TokenType.TRIPLE_UNDERSCORE)]
 
+            // Separators
+            [InlineData(",", TokenType.COMMA)]
+            [InlineData(";", TokenType.SEMICOLON)]
+
             // Single charachter assigners
             [InlineData(":", TokenType.COLON_ASSIGNER)]
             [InlineData("=", TokenType.EQUALS)]
-
-            // Single character lookups
-            [InlineData("#", TokenType.HASH)]
-            [InlineData(".", TokenType.DOT)]
-            [InlineData("/", TokenType.SLASH)]
             [InlineData("<", TokenType.LEFT_CHEVRON)]
             [InlineData(">", TokenType.RIGHT_CHEVRON)]
+
+            // Single character lookups
+            [InlineData(".", TokenType.DOT)]
+            [InlineData("#", TokenType.HASH, Padding.None_Left | Padding.Optional_Right)]
+            [InlineData("#", TokenType.HASH, Padding.Optional_Left | Padding.None_Right)]
+            [InlineData("/", TokenType.SLASH, Padding.None_Left | Padding.Optional_Right)]
+            [InlineData("/", TokenType.SLASH, Padding.None_Right | Padding.Optional_Left)]
 
             // Single character operators
             [InlineData("+", TokenType.CROSS)]
             [InlineData("-", TokenType.DASH)]
             [InlineData("*", TokenType.STAR)]
             [InlineData("%", TokenType.PERCENT)]
+            [InlineData("/", TokenType.DIVISION, Padding.Around)]
             [InlineData("~", TokenType.TILDE)]
             [InlineData("&", TokenType.AMPERSAND)]
             [InlineData("|", TokenType.PIPE)]
@@ -191,8 +199,8 @@ namespace Indra.Astra.Tests {
             [InlineData("!", TokenType.BANG)]
 
             // Double character lookups
-            [InlineData("##", TokenType.DOUBLE_HASH)]
-            [InlineData("//", TokenType.DOUBLE_DIVISION)]
+            [InlineData("##", TokenType.DOUBLE_HASH, Padding.Optional_Left | Padding.None_Right)]
+            [InlineData("//", TokenType.DOUBLE_DIVISION, Padding.Optional_Left | Padding.None_Right)]
             [InlineData("..", TokenType.DOUBLE_DOT)]
 
             // Two character lookups
@@ -270,7 +278,7 @@ namespace Indra.Astra.Tests {
             // Four character symbols
             [InlineData("##::", TokenType.DOUBLE_HASH_DOUBLE_COLON)]
             [InlineData("::>>", TokenType.DOUBLE_COLON_DOUBLE_RIGHT_ANGLE)]
-            public void WithPadding(string text, TokenType type, Padding padding = Padding.Any) {
+            public void WithPadding(string text, TokenType type, Padding padding = Padding.Optional) {
                 List<char> right = [],
                 left = [];
 
@@ -342,18 +350,18 @@ namespace Indra.Astra.Tests {
                 Semicolon = Semicolon_Left | Semicolon_Right,
                 Semicolon_Left = 16,
                 Semicolon_Right = 32,
-                Some = Some_Left | Some_Right,
-                Some_Left = Comma_Left | Semicolon_Left,
-                Some_Right = Comma_Right | Semicolon_Right,
-                Any = Any_Left | Any_Right,
-                Any_Left = Some_Left | None_Left,
-                Any_Right = Some_Right | None_Right
+                Around = Left | Right,
+                Left = Comma_Left | Semicolon_Left,
+                Right = Comma_Right | Semicolon_Right,
+                Optional_Left = Left | None_Left,
+                Optional_Right = Right | None_Right,
+                Optional = Optional_Left | Optional_Right
             }
 
             [Theory]
-            [InlineData(":", TokenType.COLON_CALLER, Seperators.Any_Left | Seperators.Some_Right)]
-            [InlineData(":", TokenType.COLON_ASSIGNER, Seperators.Any & ~Seperators.Some_Right)]
-            public void WithSeparators(string text, TokenType type, Seperators separator = Seperators.Any) {
+            [InlineData(":", TokenType.COLON_CALLER, Seperators.Optional_Left | Seperators.Right)]
+            [InlineData(":", TokenType.COLON_ASSIGNER, Seperators.Optional & ~Seperators.Right)]
+            public void WithSeparators(string text, TokenType type, Seperators separator = Seperators.Optional) {
                 List<char> right = [],
                     left = [];
 
@@ -430,10 +438,38 @@ namespace Indra.Astra.Tests {
             [InlineData("'", TokenType.SINGLE_QUOTE, ErrorCode.UNMATCHED_DELIMITER)]
             [InlineData("\"", TokenType.DOUBLE_QUOTE, ErrorCode.UNMATCHED_DELIMITER)]
             [InlineData("`", TokenType.BACKTICK, ErrorCode.UNMATCHED_DELIMITER)]
-            public void Alone_Delimiters_NotAllowed(string text, TokenType type, ErrorCode error)
+            public void NotAllowed(string text, TokenType type, ErrorCode error)
                 => Lexer.Lex(text)
                     .Assert_IsFailure(error)
                     .Assert_IsSingle(type, text, (0, text.Length));
+            #endregion
+
+            #region Alone; Other Result
+            /// <summary>
+            /// Tests for tokens that cannot be output alone, 
+            ///     and result in a different token instead.
+            ///  
+            /// (Note: These tests exist mainly for coverage purposes)
+            /// </summary>
+            [Theory]
+            [InlineData("<", TokenType.LESS_THAN, TokenType.LEFT_CHEVRON)]
+            [InlineData(">", TokenType.GREATER_THAN, TokenType.RIGHT_CHEVRON)]
+            [InlineData("<", TokenType.OPEN_ANGLE, TokenType.LEFT_CHEVRON)]
+            [InlineData(">", TokenType.CLOSE_ANGLE, TokenType.RIGHT_CHEVRON)]
+            public void OtherResult(string text, TokenType unavailable, TokenType actual) {
+                if(Lexer.Lex(text)
+                    .Assert_IsSuccess()
+                    .IsSingle(out Token? token)) {
+                    Assert.NotEqual(unavailable, token.Type);
+                    Assert.Equal(actual, token.Type);
+                }
+                else if(token is null) {
+                    Assert.Fail($"Expected a single token of type: {actual}, in the result but found none");
+                }
+                else {
+                    Assert.Fail($"Expected a single token of type: {actual}, in the result but found a second token of type: {token.Type} as well.");
+                }
+            }
             #endregion
         }
 
