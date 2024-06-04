@@ -87,5 +87,9 @@ namespace Indra.Astra.Tests {
 
       return found is not null;
     }
+
+    public static void Assert_IsSequence(this Lexer.Result result, params TokenType[] types) {
+      throw new System.NotImplementedException();
+    }
   }
 }

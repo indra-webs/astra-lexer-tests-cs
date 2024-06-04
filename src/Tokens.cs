@@ -1,6 +1,61 @@
 using static Indra.Astra.Lexer;
 
 namespace Indra.Astra.Tests {
+
+    public class Closures {
+        public class Quoted {
+
+            public enum Quotes {
+                Single = 1,
+                Double = 2,
+                Backtick = 4,
+                All = Single | Double | Backtick
+            }
+
+            public Lexer Lexer { get; }
+
+            public Quoted()
+                => Lexer = new Lexer();
+
+            [Theory]
+            [InlineData(">>", TokenType.DOUBLE_RIGHT_ANGLE)]
+            public void CanContain(string text, TokenType expected, Quotes quotes = Quotes.All) {
+                var quoteChars = new List<char>();
+                if(quotes.HasFlag(Quotes.Single)) {
+                    quoteChars.Add('\'');
+                }
+
+                if(quotes.HasFlag(Quotes.Double)) {
+                    quoteChars.Add('"');
+                }
+
+                if(quotes.HasFlag(Quotes.Backtick)) {
+                    quoteChars.Add('`');
+                }
+
+                foreach(var quote in quoteChars) {
+                    Lexer.Lex($"{quote}{text}{quote}")
+                        .Assert_IsSuccess()
+                        .Assert_IsSequence(
+                            quote switch {
+                                '\'' => TokenType.SINGLE_QUOTE,
+                                '"' => TokenType.DOUBLE_QUOTE,
+                                '`' => TokenType.BACKTICK,
+                                _ => throw new Exception("Invalid quote character")
+                            },
+                            expected,
+                            quote switch {
+                                '\'' => TokenType.SINGLE_QUOTE,
+                                '"' => TokenType.DOUBLE_QUOTE,
+                                '`' => TokenType.BACKTICK,
+                                _ => throw new Exception("Invalid quote character")
+                            }
+                        );
+                }
+            }
+        }
+    }
+
     public class Tokens {
         public class Alone {
             public Lexer Lexer { get; }
