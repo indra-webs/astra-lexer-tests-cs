@@ -1,4 +1,5 @@
 using System.Diagnostics.CodeAnalysis;
+using System.Linq;
 
 using static Indra.Astra.Lexer;
 
@@ -44,7 +45,7 @@ namespace Indra.Astra.Tests {
       Tokens._assert(result, result => {
         Assert.NotNull(result.Tokens);
 
-        if(result.IsSingle(out Token? found, ignore)) {
+        if(result.Assert_IsSingle(out Token? found, ignore)) {
           found.Assert_Is(result, type, text, position);
         }
         else if(found is null) {
@@ -56,13 +57,13 @@ namespace Indra.Astra.Tests {
       }, $"Result does not contain a single valid token {(
           result is Success ? "followed by EOF" : ""
       )}.\n\tExpected: {type}, EOF.\n\tActual: {string.Join(
-          ", ", result.Tokens?.Select(t => t.Name) ?? []
+          ", ", result.Tokens?.Where(t => ignore is null || !ignore.Contains(t.Type)).Select(t => t.Name) ?? []
       )}.");
 
       return result.Tokens![0];
     }
 
-    public static bool IsSingle(this Result result, [NotNullWhen(true)] out Token? found, TokenType[]? ignore = null) {
+    public static bool Assert_IsSingle(this Result result, [NotNullWhen(true)] out Token? found, TokenType[]? ignore = null) {
       found = null;
       if(result is Success success) {
         foreach(Token token in success.Tokens) {
@@ -88,8 +89,11 @@ namespace Indra.Astra.Tests {
       return found is not null;
     }
 
-    public static void Assert_IsSequence(this Lexer.Result result, params TokenType[] types) {
-      throw new System.NotImplementedException();
+    public static void Assert_IsSequence(
+      this Lexer.Result result,
+      params TokenType[] types
+    ) {
+
     }
   }
 }

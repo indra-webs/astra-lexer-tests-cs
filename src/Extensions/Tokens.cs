@@ -11,7 +11,9 @@ namespace Indra.Astra.Tests {
     ) {
       Tokens._assert(token, token => {
         token.Assert_Is(type, position);
-        token.Assert_Text(result.Source, text);
+        if(text is not null) {
+          token.Assert_Text(result.Source, text);
+        }
       }, $"Token does not match expected values.\n\tExpected: {type}{(
           text is not null
               ? $" = \"{text}\""
