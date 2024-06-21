@@ -1,7 +1,8 @@
-using static Indra.Astra.Lexer;
+using Indra.Astra.Tokens;
+
+using Meep.Tech.Collections;
 
 namespace Indra.Astra.Tests {
-
     public class Tokens {
         public class Alone {
             public Lexer Lexer { get; }
@@ -32,130 +33,27 @@ namespace Indra.Astra.Tests {
                 Optional_Right = Right | None_Right
             }
 
+            public static IEnumerable<(IStatic type, string value)> GetAllStaticTokens()
+                => Types.Static
+                    .Where(t => t is not IWhitespace and not IEmpty)
+                    .Select(t => (t, t.Value))
+                    .ToArray();
+
+            public static IEnumerable<object[]> GetAllStaticTokens_WithPadding
+                => GetAllStaticTokens()
+                    .Select(t => (t.type, t.value, padding: Padding.Optional))
+                    .Update(t => t.type is Backslash, t => (t.type, t.value, Padding.Optional_Left | Padding.None_Right))
+                    .Update(t => t.type is TripleDash, t => (t.type, t.value, Padding.None_Left | Padding.Optional_Right))
+                    .Skip(t => t.type is CloseBlockComment)
+                    .Select(t => new object[] { t.type, t.value, t.padding })
+                    .ToArray();
+
             /// <summary>
             /// Test that a token is correctly identified when it is the only non-whitespace token in the input.
             /// </summary>
             [Theory]
-            // Comments
-            [InlineData("#", TokenType.EOL_HASH_COMMENT, Padding.Around)]
-            [InlineData("##", TokenType.DOC_HASH_COMMENT, Padding.None_Left | Padding.Around)]
-            [InlineData("//", TokenType.EOL_SLASH_COMMENT, Padding.None_Left | Padding.Around)]
-
-            // Underscores
-            [InlineData("_", TokenType.UNDERSCORE)]
-            [InlineData("__", TokenType.DOUBLE_UNDERSCORE)]
-            [InlineData("___", TokenType.TRIPLE_UNDERSCORE)]
-
-            // Separators
-            [InlineData(",", TokenType.COMMA)]
-            [InlineData(";", TokenType.SEMICOLON)]
-
-            // Single charachter assigners
-            [InlineData(":", TokenType.COLON_ASSIGNER)]
-            [InlineData("=", TokenType.EQUALS)]
-            [InlineData("<", TokenType.LEFT_CHEVRON)]
-            [InlineData(">", TokenType.RIGHT_CHEVRON)]
-
-            // Single character lookups
-            [InlineData(".", TokenType.DOT)]
-            [InlineData("#", TokenType.HASH, Padding.None_Left | Padding.Optional_Right)]
-            [InlineData("#", TokenType.HASH, Padding.Optional_Left | Padding.None_Right)]
-            [InlineData("/", TokenType.SLASH, Padding.None_Left | Padding.Optional_Right)]
-            [InlineData("/", TokenType.SLASH, Padding.None_Right | Padding.Optional_Left)]
-
-            // Single character operators
-            [InlineData("+", TokenType.CROSS)]
-            [InlineData("-", TokenType.DASH)]
-            [InlineData("*", TokenType.STAR)]
-            [InlineData("%", TokenType.PERCENT)]
-            [InlineData("/", TokenType.DIVISION, Padding.Around)]
-            [InlineData("~", TokenType.TILDE)]
-            [InlineData("&", TokenType.AMPERSAND)]
-            [InlineData("|", TokenType.PIPE)]
-            [InlineData("?", TokenType.QUESTION)]
-            [InlineData("!", TokenType.BANG)]
-
-            // Double character lookups
-            [InlineData("##", TokenType.DOUBLE_HASH, Padding.Optional_Left | Padding.None_Right)]
-            [InlineData("//", TokenType.DOUBLE_DIVISION, Padding.Optional_Left | Padding.None_Right)]
-            [InlineData("..", TokenType.DOUBLE_DOT)]
-
-            // Two character lookups
-            [InlineData("!#", TokenType.BANG_HASH)]
-            [InlineData("?#", TokenType.QUESTION_HASH)]
-            [InlineData(".!", TokenType.DOT_BANG)]
-            [InlineData(".?", TokenType.DOT_QUESTION)]
-            [InlineData(".#", TokenType.DOT_HASH)]
-
-            // Double character operators
-            [InlineData("++", TokenType.DOUBLE_PLUS)]
-            [InlineData("--", TokenType.DOUBLE_DASH)]
-            [InlineData("**", TokenType.DOUBLE_TIMES)]
-            [InlineData("%%", TokenType.DOUBLE_PERCENT)]
-            [InlineData("~~", TokenType.DOUBLE_TILDE)]
-            [InlineData("&&", TokenType.DOUBLE_AMPERSAND)]
-            [InlineData("||", TokenType.DOUBLE_PIPE)]
-            [InlineData("==", TokenType.DOUBLE_EQUALS)]
-            [InlineData("=<", TokenType.EQUALS_OR_LESS)]
-            [InlineData(">=", TokenType.GREATER_OR_EQUALS)]
-            [InlineData("!!", TokenType.DOUBLE_BANG)]
-            [InlineData("??", TokenType.DOUBLE_QUESTION)]
-
-            // Two character arrow assigners
-            [InlineData(">>", TokenType.DOUBLE_RIGHT_ANGLE)]
-            [InlineData("<<", TokenType.DOUBLE_LEFT_ANGLE)]
-            [InlineData("+>", TokenType.RIGHT_PLUS_ARROW)]
-            [InlineData("<+", TokenType.LEFT_PLUS_ARROW)]
-            [InlineData("->", TokenType.RIGHT_DASH_ARROW)]
-            [InlineData("<-", TokenType.LEFT_DASH_ARROW)]
-            [InlineData("=>", TokenType.RIGHT_EQUALS_ARROW)]
-            [InlineData("<=", TokenType.LEFT_EQUALS_ARROW)]
-            [InlineData("~>", TokenType.RIGHT_TILDE_ARROW)]
-            [InlineData("<~", TokenType.LEFT_TILDE_ARROW)]
-            [InlineData(":>", TokenType.COLON_RIGHT_ANGLE)]
-
-            // Compound two charachter assigners
-            [InlineData(".=", TokenType.DOT_EQUALS)]
-            [InlineData("/=", TokenType.DIVISION_EQUALS)]
-            [InlineData("?=", TokenType.QUESTION_EQUALS)]
-            [InlineData("!=", TokenType.BANG_EQUALS)]
-            [InlineData(":=", TokenType.COLON_EQUALS)]
-            [InlineData("+=", TokenType.PLUS_EQUALS)]
-            [InlineData("-=", TokenType.MINUS_EQUALS)]
-            [InlineData("*=", TokenType.TIMES_EQUALS)]
-            [InlineData("%=", TokenType.PERCENT_EQUALS)]
-            [InlineData("~=", TokenType.TILDE_EQUALS)]
-            [InlineData("=~", TokenType.EQUALS_TILDE)]
-            [InlineData("#=", TokenType.HASH_EQUALS)]
-
-            // Three character lookups
-            [InlineData("...", TokenType.TRIPLE_DOT)]
-            [InlineData(".!#", TokenType.DOT_BANG_HASH)]
-            [InlineData(".?#", TokenType.DOT_QUESTION_HASH)]
-            [InlineData("!.#", TokenType.BANG_DOT_HASH)]
-            [InlineData("?.#", TokenType.QUESTION_DOT_HASH)]
-            [InlineData("..?", TokenType.DOUBLE_DOT_QUESTION)]
-            [InlineData("..!", TokenType.DOUBLE_DOT_BANG)]
-            [InlineData("..#", TokenType.DOUBLE_DOT_HASH)]
-
-            // Triple character assigners
-            [InlineData(":::", TokenType.TRIPLE_COLON_ASSIGNER)]
-            [InlineData(">>>", TokenType.TRIPLE_RIGHT_ANGLE)]
-            [InlineData("<<<", TokenType.TRIPLE_LEFT_ANGLE)]
-
-            // Three character assigners
-            [InlineData("??=", TokenType.DOUBLE_QUESTION_EQUALS)]
-            [InlineData("!!=", TokenType.DOUBLE_BANG_EQUALS)]
-            [InlineData("##=", TokenType.DOUBLE_HASH_EQUALS)]
-            [InlineData("::=", TokenType.DOUBLE_COLON_EQUALS)]
-            [InlineData("::>", TokenType.DOUBLE_COLON_RIGHT_ANGLE)]
-            [InlineData(":>>", TokenType.COLON_DOUBLE_RIGHT_ANGLE)]
-            [InlineData("##:", TokenType.DOUBLE_HASH_COLON)]
-
-            // Four character symbols
-            [InlineData("##::", TokenType.DOUBLE_HASH_DOUBLE_COLON)]
-            [InlineData("::>>", TokenType.DOUBLE_COLON_DOUBLE_RIGHT_ANGLE)]
-            public void WithPadding(string text, TokenType type, Padding padding = Padding.Optional) {
+            [MemberData(nameof(GetAllStaticTokens_WithPadding))]
+            public void WithPadding(IStatic type, string text, Padding padding = Padding.Optional) {
                 List<char> right = [],
                 left = [];
 
@@ -201,7 +99,7 @@ namespace Indra.Astra.Tests {
                         Lexer.Lex(padded)
                             .Assert_IsSuccess()
                             .Assert_IsSingle(type, text, (l is '\0' ? 0 : 1, text.Length + (l is '\0' ? 0 : 1)));
-                    }, $"Padding variant: '{debugPadding(l)}' + '{text}' + '{debugPadding(r)}'` failed.");
+                    }, $"Padding variant: '{debugPadding(l)}' + '{text}' + '{debugPadding(r)}' failed.");
 
                     static string debugPadding(char c)
                         => c switch {
@@ -235,56 +133,86 @@ namespace Indra.Astra.Tests {
                 Optional = Optional_Left | Optional_Right
             }
 
-            [Theory]
-            [InlineData(":", TokenType.COLON_CALLER, Seperators.Optional_Left | Seperators.Right)]
-            [InlineData(":", TokenType.COLON_ASSIGNER, Seperators.Optional & ~Seperators.Right)]
-            public void WithSeparators(string text, TokenType type, Seperators separator = Seperators.Optional) {
-                List<char> right = [],
-                    left = [];
+            public static IEnumerable<object[]> GetAllStaticTokens_WithSeparators
+                => GetAllStaticTokens()
+                    .Select(t => (t.type, t.value, separators: Seperators.Optional))
+                    .Skip(t => t.type is OpenBlockComment)
+                    .Skip(t => t.type is CloseBlockComment)
+                    .Update(t => t.type is Backslash, t => (t.type, t.value, separators: Seperators.Optional_Left | Seperators.None_Right))
+                    .Update(t => t.type is SemiColon, t => (t.type, t.value, separators: Seperators.Comma | Seperators.None))
+                    .Update(t => t.type is DoubleSemiColon, t => (t.type, t.value, separators: Seperators.Comma | Seperators.None))
+                    .Update(t => t.type is TripleDash, t => (t.type, t.value, separators: Seperators.None_Left | Seperators.Optional_Right))
+                    .Select(t => new object[] { t.type, t.value, t.separators })
+                    .ToArray();
 
-                if(separator.HasFlag(Seperators.Comma_Left)) {
+            [Theory]
+            [MemberData(nameof(GetAllStaticTokens_WithSeparators))]
+            public void WithSeparators(TokenType type, string text, Seperators seperators = Seperators.Optional) {
+                List<char> right = [],
+                        left = [];
+
+                if(seperators.HasFlag(Seperators.Comma_Left)) {
                     left.Add(',');
                 }
 
-                if(separator.HasFlag(Seperators.Comma_Right)) {
+                if(seperators.HasFlag(Seperators.Comma_Right)) {
                     right.Add(',');
                 }
 
-                if(separator.HasFlag(Seperators.Semicolon_Left)) {
+                if(seperators.HasFlag(Seperators.Semicolon_Left)) {
                     left.Add(';');
                 }
 
-                if(separator.HasFlag(Seperators.Semicolon_Right)) {
+                if(seperators.HasFlag(Seperators.Semicolon_Right)) {
                     right.Add(';');
                 }
 
-                if(separator.HasFlag(Seperators.None_Left)) {
+                if(seperators.HasFlag(Seperators.None_Left)) {
                     left.Add('\0');
                 }
 
-                if(separator.HasFlag(Seperators.None_Right)) {
+                if(seperators.HasFlag(Seperators.None_Right)) {
                     right.Add('\0');
                 }
 
                 (char l, char r)[] paddingVariants =
-                    left.SelectMany(l => right.Select(r => (l, r))).ToArray();
+                        left.SelectMany(l => right.Select(r => (l, r))).ToArray();
 
                 foreach((char l, char r) in paddingVariants) {
                     _assert((l, r), (padding) => {
-                        string padded = $"{l}{text}{r}".Trim('\0');
+                        string left = getSeperatorText(l);
+                        string right = getSeperatorText(r);
+                        string withSeperators
+                            = $"{left}{text}{right}";
 
-                        Lexer.Lex(padded)
+                        TokenType leftSeparator = getSeparatorToken(l);
+                        TokenType rightSeparator = getSeparatorToken(r);
+                        Lexer.Lex(withSeperators)
                             .Assert_IsSuccess()
-                            .Assert_IsSingle(
+                            .Assert_IsSequence(
+                                leftSeparator,
+                                type,
+                                rightSeparator
+                            ).Assert_At(
+                                leftSeparator is None
+                                    ? 0
+                                    : 1,
                                 type,
                                 text,
-                                (start: l is '\0' ? 0 : 1,
-                                    end: text.Length + (l is '\0' ? 0 : 1)),
-                                ignore: [TokenType.COMMA, TokenType.SEMICOLON]
+                                (start: left.Length,
+                                    end: text.Length + left.Length)
                             );
-                    }, $"Padding variant: '{debugSeperator(l)}' + '{text}' + '{debugSeperator(r)}'` failed.");
+                    }, $"Padding variant: '{left}' + '{text}' + '{right}'` failed.");
 
-                    static string debugSeperator(char c)
+                    static TokenType getSeparatorToken(char c)
+                        => c switch {
+                            ',' => Comma.Type,
+                            ';' => SemiColon.Type,
+                            '\0' => None.Type,
+                            _ => throw new NotImplementedException(),
+                        };
+
+                    static string getSeperatorText(char c)
                         => c switch {
                             '\0' => "",
                             ',' => ",",
@@ -296,227 +224,197 @@ namespace Indra.Astra.Tests {
 
             #endregion
 
-            #region Alone; In Quotes
+            //     #region Alone; In Quotes
 
-            public enum Quotes {
-                Single = 1,
-                Double = 2,
-                Backtick = 4,
-                All = Single | Double | Backtick
-            }
+            //     public enum Quotes {
+            //         Single = 1,
+            //         Double = 2,
+            //         Backtick = 4,
+            //         All = Single | Double | Backtick
+            //     }
 
-            [Theory]
-            // Comments
-            [InlineData(" # ", TokenType.EOL_HASH_COMMENT)]
-            [InlineData(" // ", TokenType.EOL_SLASH_COMMENT)]
+            //     [Theory]
+            //     // Separators
+            //     [InlineData(",", Comma)]
+            //     [InlineData(";", Semicolon)]
 
-            // Underscores
-            [InlineData("_", TokenType.UNDERSCORE)]
-            [InlineData("__", TokenType.DOUBLE_UNDERSCORE)]
-            [InlineData("___", TokenType.TRIPLE_UNDERSCORE)]
+            //     // Delimiters
+            //     [InlineData("(", Left_parenthesis)]
+            //     [InlineData(")", Right_parenthesis)]
+            //     [InlineData("[", Left_bracket)]
+            //     [InlineData("]", Right_bracket)]
+            //     [InlineData("{", Left_brace)]
+            //     [InlineData("}", Right_brace)]
+            //     [InlineData("<", Left_angle)]
+            //     [InlineData(">", Right_angle)]
 
-            // Separators
-            [InlineData(",", TokenType.COMMA)]
-            [InlineData(";", TokenType.SEMICOLON)]
+            //     // Single charachter assigners
+            //     [InlineData(": ", Colon)]
+            //     [InlineData("=", Equals)]
 
-            // Delimiters
-            [InlineData("(", TokenType.OPEN_PARENTHESIS)]
-            [InlineData(")", TokenType.CLOSE_PARENTHESIS)]
-            [InlineData("[", TokenType.OPEN_BRACKET)]
-            [InlineData("]", TokenType.CLOSE_BRACKET)]
-            [InlineData("{", TokenType.OPEN_BRACE)]
-            [InlineData("}", TokenType.CLOSE_BRACE)]
-            [InlineData("<", TokenType.OPEN_ANGLE)]
+            //     // Single character lookups
+            //     [InlineData(".", Dot)]
+            //     [InlineData("#", Hash)]
+            //     [InlineData("/", Slash)]
 
-            // Single charachter assigners
-            [InlineData(": ", TokenType.COLON_ASSIGNER)]
-            [InlineData(" <", TokenType.LEFT_CHEVRON)]
-            [InlineData("=", TokenType.EQUALS)]
-            [InlineData(">", TokenType.RIGHT_CHEVRON)]
+            //     // Single character operators
+            //     [InlineData(":", Colon)]
+            //     [InlineData("+", Plus)]
+            //     [InlineData("-", Dash)]
+            //     [InlineData("*", Star)]
+            //     [InlineData("%", Percent)]
+            //     [InlineData(" / ", Slash)]
+            //     [InlineData("~", Tilde)]
+            //     [InlineData("&", And)]
+            //     [InlineData("|", Pipe)]
+            //     [InlineData("?", Question)]
+            //     [InlineData("!", Bang)]
 
-            // Single character lookups
-            [InlineData(".", TokenType.DOT)]
-            [InlineData("#", TokenType.HASH)]
-            [InlineData("/", TokenType.SLASH)]
+            //     // Double character lookups
+            //     [InlineData("##", Double_hash)]
+            //     [InlineData("//", Double_slash)]
+            //     [InlineData("..", Double_dot)]
 
-            // Single character operators
-            [InlineData(":", TokenType.COLON_CALLER)]
-            [InlineData("+", TokenType.CROSS)]
-            [InlineData("-", TokenType.DASH)]
-            [InlineData("*", TokenType.STAR)]
-            [InlineData("%", TokenType.PERCENT)]
-            [InlineData(" / ", TokenType.DIVISION)]
-            [InlineData("~", TokenType.TILDE)]
-            [InlineData("&", TokenType.AMPERSAND)]
-            [InlineData("|", TokenType.PIPE)]
-            [InlineData("?", TokenType.QUESTION)]
-            [InlineData("!", TokenType.BANG)]
-            [InlineData(" < ", TokenType.LESS_THAN)]
-            [InlineData(" > ", TokenType.GREATER_THAN)]
+            //     // Double character operators
+            //     [InlineData("++", Double_plus)]
+            //     [InlineData("--", Double_dash)]
+            //     [InlineData("**", Double_times)]
+            //     [InlineData("%%", Double_percent)]
+            //     [InlineData("~~", Double_tilde)]
+            //     [InlineData("&&", Double_and)]
+            //     [InlineData("||", Double_pipe)]
+            //     [InlineData("==", Double_equals)]
+            //     [InlineData("=<", Equals_less)]
+            //     [InlineData(">=", Greater_equals)]
+            //     [InlineData("!!", Double_bang)]
+            //     [InlineData("??", Double_question)]
 
-            // Double character lookups
-            [InlineData("##", TokenType.DOUBLE_HASH)]
-            [InlineData("//", TokenType.DOUBLE_DIVISION)]
-            [InlineData("..", TokenType.DOUBLE_DOT)]
+            //     // Two character arrow assigners
+            //     [InlineData(">>", Double_right_angle)]
+            //     [InlineData("<<", Double_left_angle)]
+            //     [InlineData("+>", Right_plus_arrow)]
+            //     [InlineData("<+", Left_plus_arrow)]
+            //     [InlineData("->", Right_dash_arrow)]
+            //     [InlineData("<-", Left_dash_arrow)]
+            //     [InlineData("=>", Right_equals_arrow)]
+            //     [InlineData("<=", Left_equals_arrow)]
+            //     [InlineData("~>", Right_tilde_arrow)]
+            //     [InlineData("<~", Left_tilde_arrow)]
 
-            // Two character lookups
-            [InlineData("!#", TokenType.BANG_HASH)]
-            [InlineData("?#", TokenType.QUESTION_HASH)]
-            [InlineData(".!", TokenType.DOT_BANG)]
-            [InlineData(".?", TokenType.DOT_QUESTION)]
-            [InlineData(".#", TokenType.DOT_HASH)]
+            //     // Compound two charachter assigners
+            //     [InlineData(".=", Dot_equals)]
+            //     [InlineData("/=", Division_equals)]
+            //     [InlineData("?=", Question_equals)]
+            //     [InlineData("!=", Bang_equals)]
+            //     [InlineData(":=", Colon_equals)]
+            //     [InlineData("+=", Plus_equals)]
+            //     [InlineData("-=", Minus_equals)]
+            //     [InlineData("*=", Times_equals)]
+            //     [InlineData("%=", Percent_equals)]
+            //     [InlineData("~=", Tilde_equals)]
+            //     [InlineData("=~", Equals_tilde)]
+            //     [InlineData("#=", Hash_equals)]
 
-            // Double character operators
-            [InlineData("++", TokenType.DOUBLE_PLUS)]
-            [InlineData("--", TokenType.DOUBLE_DASH)]
-            [InlineData("**", TokenType.DOUBLE_TIMES)]
-            [InlineData("%%", TokenType.DOUBLE_PERCENT)]
-            [InlineData("~~", TokenType.DOUBLE_TILDE)]
-            [InlineData("&&", TokenType.DOUBLE_AMPERSAND)]
-            [InlineData("||", TokenType.DOUBLE_PIPE)]
-            [InlineData("==", TokenType.DOUBLE_EQUALS)]
-            [InlineData("=<", TokenType.EQUALS_OR_LESS)]
-            [InlineData(">=", TokenType.GREATER_OR_EQUALS)]
-            [InlineData("!!", TokenType.DOUBLE_BANG)]
-            [InlineData("??", TokenType.DOUBLE_QUESTION)]
+            //     // Tripple character lookups
+            //     [InlineData("...", Triple_dot)]
 
-            // Two character arrow assigners
-            [InlineData(">>", TokenType.DOUBLE_RIGHT_ANGLE)]
-            [InlineData("<<", TokenType.DOUBLE_LEFT_ANGLE)]
-            [InlineData("+>", TokenType.RIGHT_PLUS_ARROW)]
-            [InlineData("<+", TokenType.LEFT_PLUS_ARROW)]
-            [InlineData("->", TokenType.RIGHT_DASH_ARROW)]
-            [InlineData("<-", TokenType.LEFT_DASH_ARROW)]
-            [InlineData("=>", TokenType.RIGHT_EQUALS_ARROW)]
-            [InlineData("<=", TokenType.LEFT_EQUALS_ARROW)]
-            [InlineData("~>", TokenType.RIGHT_TILDE_ARROW)]
-            [InlineData("<~", TokenType.LEFT_TILDE_ARROW)]
-            [InlineData(":>", TokenType.COLON_RIGHT_ANGLE)]
+            //     // Triple character assigners
+            //     [InlineData(":::", Triple_colon)]
+            //     [InlineData(">>>", Triple_right_angle)]
+            //     [InlineData("<<<", Triple_left_angle)]
 
-            // Compound two charachter assigners
-            [InlineData(".=", TokenType.DOT_EQUALS)]
-            [InlineData("/=", TokenType.DIVISION_EQUALS)]
-            [InlineData("?=", TokenType.QUESTION_EQUALS)]
-            [InlineData("!=", TokenType.BANG_EQUALS)]
-            [InlineData(":=", TokenType.COLON_EQUALS)]
-            [InlineData("+=", TokenType.PLUS_EQUALS)]
-            [InlineData("-=", TokenType.MINUS_EQUALS)]
-            [InlineData("*=", TokenType.TIMES_EQUALS)]
-            [InlineData("%=", TokenType.PERCENT_EQUALS)]
-            [InlineData("~=", TokenType.TILDE_EQUALS)]
-            [InlineData("=~", TokenType.EQUALS_TILDE)]
-            [InlineData("#=", TokenType.HASH_EQUALS)]
+            //     // Three character assigners
+            //     [InlineData("??=", Double_question_equals)]
+            //     [InlineData("!!=", Double_bang_equals)]
+            //     [InlineData("##=", Double_hash_equals)]
 
-            // Three character lookups
-            [InlineData("...", TokenType.TRIPLE_DOT)]
-            [InlineData(".!#", TokenType.DOT_BANG_HASH)]
-            [InlineData(".?#", TokenType.DOT_QUESTION_HASH)]
-            [InlineData("!.#", TokenType.BANG_DOT_HASH)]
-            [InlineData("?.#", TokenType.QUESTION_DOT_HASH)]
-            [InlineData("..?", TokenType.DOUBLE_DOT_QUESTION)]
-            [InlineData("..!", TokenType.DOUBLE_DOT_BANG)]
-            [InlineData("..#", TokenType.DOUBLE_DOT_HASH)]
+            //     // Four character symbols
+            //     [InlineData("##::", Double_hash_double_colon)]
+            //     [InlineData("::>>", Double_colon_double_right_angle)]
+            //     public void InQuotes(string text, expected, Quotes quotes = Quotes.All) {
+            //         List<char> quoteChars = [];
+            //         if(quotes.HasFlag(Quotes.Single)) {
+            //             quoteChars.Add('\'');
+            //         }
 
-            // Triple character assigners
-            [InlineData(":::", TokenType.TRIPLE_COLON_ASSIGNER)]
-            [InlineData(">>>", TokenType.TRIPLE_RIGHT_ANGLE)]
-            [InlineData("<<<", TokenType.TRIPLE_LEFT_ANGLE)]
+            //         if(quotes.HasFlag(Quotes.Double)) {
+            //             quoteChars.Add('"');
+            //         }
 
-            // Three character assigners
-            [InlineData("??=", TokenType.DOUBLE_QUESTION_EQUALS)]
-            [InlineData("!!=", TokenType.DOUBLE_BANG_EQUALS)]
-            [InlineData("##=", TokenType.DOUBLE_HASH_EQUALS)]
-            [InlineData("::=", TokenType.DOUBLE_COLON_EQUALS)]
-            [InlineData("::>", TokenType.DOUBLE_COLON_RIGHT_ANGLE)]
-            [InlineData(":>>", TokenType.COLON_DOUBLE_RIGHT_ANGLE)]
-            [InlineData("##:", TokenType.DOUBLE_HASH_COLON)]
+            //         if(quotes.HasFlag(Quotes.Backtick)) {
+            //             quoteChars.Add('`');
+            //         }
 
-            // Four character symbols
-            [InlineData("##::", TokenType.DOUBLE_HASH_DOUBLE_COLON)]
-            [InlineData("::>>", TokenType.DOUBLE_COLON_DOUBLE_RIGHT_ANGLE)]
-            public void InQuotes(string text, TokenType expected, Quotes quotes = Quotes.All) {
-                List<char> quoteChars = [];
-                if(quotes.HasFlag(Quotes.Single)) {
-                    quoteChars.Add('\'');
-                }
+            //         foreach(char quote in quoteChars) {
+            //             Lexer.Lex($"{quote}{text}{quote}")
+            //                 .Assert_IsSuccess()
+            //                 .Assert_IsSingle(
+            //                     expected,
+            //                     ignore: [quote switch {
+            //                         '\'' => SingleQuote,
+            //                         '"' => DoubleQuote,
+            //                         '`' => Backtick,
+            //                         _ => throw new InvalidOperationException("Invalid quote character")
+            //                     }]
+            //                 );
+            //         }
+            //     }
 
-                if(quotes.HasFlag(Quotes.Double)) {
-                    quoteChars.Add('"');
-                }
+            //     #endregion
 
-                if(quotes.HasFlag(Quotes.Backtick)) {
-                    quoteChars.Add('`');
-                }
+            //     #region Alone; Not Allowed
+            //     /// <summary>
+            //     /// Test that an open delimiter is correctly identified and
+            //     ///     throws an unmatched delimiter error when 
+            //     ///      it is the only token in the input.
+            //     /// </summary>
+            //     [Theory]
+            //     // Brackets
+            //     [InlineData("(", LeftParenthesis, ErrorCode.UNMATCHED_DELIMITER)]
+            //     [InlineData(")", RightParenthesis, ErrorCode.UNMATCHED_DELIMITER)]
+            //     [InlineData("[", LeftBracket, ErrorCode.UNMATCHED_DELIMITER)]
+            //     [InlineData("]", RightBracket, ErrorCode.UNMATCHED_DELIMITER)]
+            //     [InlineData("{", LeftBrace, ErrorCode.UNMATCHED_DELIMITER)]
+            //     [InlineData("}", RightBrace, ErrorCode.UNMATCHED_DELIMITER)]
 
-                foreach(char quote in quoteChars) {
-                    Lexer.Lex($"{quote}{text}{quote}")
-                        .Assert_IsSuccess()
-                        .Assert_IsSingle(
-                            expected,
-                            ignore: [quote switch {
-                                '\'' => TokenType.SINGLE_QUOTE,
-                                '"' => TokenType.DOUBLE_QUOTE,
-                                '`' => TokenType.BACKTICK,
-                                _ => throw new InvalidOperationException("Invalid quote character")
-                            }]
-                        );
-                }
-            }
+            //     // Quotes
+            //     [InlineData("'", SingleQuote, ErrorCode.UNMATCHED_DELIMITER)]
+            //     [InlineData("\"", DoubleQuote, ErrorCode.UNMATCHED_DELIMITER)]
+            //     [InlineData("`", Backtick, ErrorCode.UNMATCHED_DELIMITER)]
+            //     public void NotAllowed(string text, type, ErrorCode error)
+            //         => Lexer.Lex(text)
+            //             .Assert_IsFailure(error)
+            //             .Assert_IsSingle(type, text, (0, text.Length));
+            //     #endregion
 
-            #endregion
-
-            #region Alone; Not Allowed
-            /// <summary>
-            /// Test that an open delimiter is correctly identified and
-            ///     throws an unmatched delimiter error when 
-            ///      it is the only token in the input.
-            /// </summary>
-            [Theory]
-            // Brackets
-            [InlineData("(", TokenType.OPEN_PARENTHESIS, ErrorCode.UNMATCHED_DELIMITER)]
-            [InlineData(")", TokenType.CLOSE_PARENTHESIS, ErrorCode.UNMATCHED_DELIMITER)]
-            [InlineData("[", TokenType.OPEN_BRACKET, ErrorCode.UNMATCHED_DELIMITER)]
-            [InlineData("]", TokenType.CLOSE_BRACKET, ErrorCode.UNMATCHED_DELIMITER)]
-            [InlineData("{", TokenType.OPEN_BRACE, ErrorCode.UNMATCHED_DELIMITER)]
-            [InlineData("}", TokenType.CLOSE_BRACE, ErrorCode.UNMATCHED_DELIMITER)]
-
-            // Quotes
-            [InlineData("'", TokenType.SINGLE_QUOTE, ErrorCode.UNMATCHED_DELIMITER)]
-            [InlineData("\"", TokenType.DOUBLE_QUOTE, ErrorCode.UNMATCHED_DELIMITER)]
-            [InlineData("`", TokenType.BACKTICK, ErrorCode.UNMATCHED_DELIMITER)]
-            public void NotAllowed(string text, TokenType type, ErrorCode error)
-                => Lexer.Lex(text)
-                    .Assert_IsFailure(error)
-                    .Assert_IsSingle(type, text, (0, text.Length));
-            #endregion
-
-            #region Alone; Other Result
-            /// <summary>
-            /// Tests for tokens that cannot be output alone, 
-            ///     and result in a different token instead.
-            ///  
-            /// (Note: These tests exist mainly for coverage purposes)
-            /// </summary>
-            [Theory]
-            [InlineData("<", TokenType.LESS_THAN, TokenType.LEFT_CHEVRON)]
-            [InlineData(">", TokenType.GREATER_THAN, TokenType.RIGHT_CHEVRON)]
-            [InlineData("<", TokenType.OPEN_ANGLE, TokenType.LEFT_CHEVRON)]
-            [InlineData(">", TokenType.CLOSE_ANGLE, TokenType.RIGHT_CHEVRON)]
-            public void OtherResult(string text, TokenType unavailable, TokenType actual) {
-                if(Lexer.Lex(text)
-                    .Assert_IsSuccess()
-                    .Assert_IsSingle(out Token? token)) {
-                    Assert.NotEqual(unavailable, token.Type);
-                    Assert.Equal(actual, token.Type);
-                }
-                else if(token is null) {
-                    Assert.Fail($"Expected a single token of type: {actual}, in the result but found none");
-                }
-                else {
-                    Assert.Fail($"Expected a single token of type: {actual}, in the result but found a second token of type: {token.Type} as well.");
-                }
-            }
-            #endregion
+            //     #region Alone; Other Result
+            //     /// <summary>
+            //     /// Tests for tokens that cannot be output alone, 
+            //     ///     and result in a different token instead.
+            //     ///  
+            //     /// (Note: These tests exist mainly for coverage purposes)
+            //     /// </summary>
+            //     [Theory]
+            //     [InlineData("<", LessThan, Left_chevron)]
+            //     [InlineData(">", GreaterThan, Right_chevron)]
+            //     [InlineData("<", LeftAngle, Left_chevron)]
+            //     [InlineData(">", RightAngle, Right_chevron)]
+            //     public void OtherResult(string text, unavailable, actual) {
+            //         if(Lexer.Lex(text)
+            //             .Assert_IsSuccess()
+            //             .Assert_IsSingle(out Token? token)) {
+            //             Assert.NotEqual(unavailable, token.Type);
+            //             Assert.Equal(actual, token.Type);
+            //         }
+            //         else if(token is null) {
+            //             Assert.Fail($"Expected a single token of type: {actual}, in the result but found none");
+            //         }
+            //         else {
+            //             Assert.Fail($"Expected a single token of type: {actual}, in the result but found a second token of type: {token.Type} as well.");
+            //         }
+            //     }
+            //     #endregion
+            // 
         }
 
         public class Together {

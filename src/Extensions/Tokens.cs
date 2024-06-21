@@ -1,3 +1,5 @@
+using Indra.Astra.Tokens;
+
 using static Indra.Astra.Lexer;
 
 namespace Indra.Astra.Tests {
@@ -5,7 +7,7 @@ namespace Indra.Astra.Tests {
     public static Token Assert_Is(
         this Token token,
         Result result,
-        TokenType type,
+        IToken type,
         string? text = null,
         (int start, int end)? position = null
     ) {
@@ -14,7 +16,7 @@ namespace Indra.Astra.Tests {
         if(text is not null) {
           token.Assert_Text(result.Source, text);
         }
-      }, $"Token does not match expected values.\n\tExpected: {type}{(
+      }, $"Token does not match expected values.\n\tExpected: {type.Name}{(
           text is not null
               ? $" = \"{text}\""
               : ""
@@ -29,30 +31,30 @@ namespace Indra.Astra.Tests {
 
     public static Token Assert_Is(
         this Token token,
-        TokenType? type = null,
+        IToken? type = null,
         (int start, int end)? position = null
     ) {
       Tokens._assert(token, token => {
-        if(type.HasValue) {
-          token.Assert_Type(type.Value);
+        if(type is not null) {
+          token.Assert_Type(type);
         }
 
         if(position is not null) {
           token.Assert_Position(position.Value.start, position.Value.end);
         }
-      }, $"Token does not match expected values.\n\tExpected: {type}{(
+      }, $"Token does not match expected values.\n\tExpected: {type?.Name ?? "NONE"}{(
         position is not null
           ? $" @ ({position.Value.start} -> {position.Value.end})"
           : ""
-      )}.\n\tActual: {token.Name} @ ({token.Start} -> {token.End}).");
+      )}.\n\tActual: {token.Type.Name} @ ({token.Start} -> {token.End}).");
 
       return token;
     }
 
-    public static void Assert_Type(this Token token, TokenType type)
+    public static void Assert_Type(this Token token, IToken type)
         => Tokens._assert(token, token =>
             Assert.Equal(type, token.Type),
-            $"Incorrect Type:\n\tExpected: {type}.\n\tActual: {token.Type}.");
+            $"Incorrect Type:\n\tExpected: {type.Name}.\n\tActual: {token.Type.Name}.");
 
     public static void Assert_Position(this Token token, int start, int end)
       => Tokens._assert(token, token => {
@@ -67,7 +69,7 @@ namespace Indra.Astra.Tests {
 
     public static Token Assert_IsNot(
         this Token token,
-        TokenType type
+        IToken type
     ) {
       Tokens._assert(token, token
           => Assert.NotEqual(type, token.Type),

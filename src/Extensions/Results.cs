@@ -1,6 +1,8 @@
 using System.Diagnostics.CodeAnalysis;
 using System.Linq;
 
+using Indra.Astra.Tokens;
+
 using static Indra.Astra.Lexer;
 
 namespace Indra.Astra.Tests {
@@ -37,7 +39,7 @@ namespace Indra.Astra.Tests {
 
     public static Token Assert_IsSingle(
         this Result result,
-        TokenType type,
+        IToken type,
         string? text = null,
         (int start, int end)? position = null,
         TokenType[]? ignore = null
@@ -45,29 +47,29 @@ namespace Indra.Astra.Tests {
       Tokens._assert(result, result => {
         Assert.NotNull(result.Tokens);
 
-        if(result.Assert_IsSingle(out Token? found, ignore)) {
+        if(result.TryAssert_IsSingle(out Token? found, ignore)) {
           found.Assert_Is(result, type, text, position);
         }
         else if(found is null) {
-          Assert.Fail($"No token of type: {type} found in result.");
+          Assert.Fail($"No token of type: {type.Name} found in result.");
         }
         else {
           Assert.Fail($"Unexpected second non-ws token of type: {found.Name}, found in what should be a single non-ws-token result.");
         }
       }, $"Result does not contain a single valid token {(
           result is Success ? "followed by EOF" : ""
-      )}.\n\tExpected: {type}, EOF.\n\tActual: {string.Join(
+      )}.\n\tExpected: {type.Name}, EOF.\n\tActual: {string.Join(
           ", ", result.Tokens?.Where(t => ignore is null || !ignore.Contains(t.Type)).Select(t => t.Name) ?? []
       )}.");
 
       return result.Tokens![0];
     }
 
-    public static bool Assert_IsSingle(this Result result, [NotNullWhen(true)] out Token? found, TokenType[]? ignore = null) {
+    public static bool TryAssert_IsSingle(this Result result, [NotNullWhen(true)] out Token? found, TokenType[]? ignore = null) {
       found = null;
       if(result is Success success) {
         foreach(Token token in success.Tokens) {
-          if(token.Type.IsWhiteSpace() || (ignore is not null && ignore.Contains(token.Type))) {
+          if(token.Type is IWhitespace || (ignore is not null && ignore.Contains(token.Type))) {
             continue;
           }
           else if(found is not null) {
@@ -79,7 +81,7 @@ namespace Indra.Astra.Tests {
           }
         }
 
-        Assert.Equal(TokenType.EOF, success.Tokens[^1].Type);
+        Assert.Equal(EndOfFile.Type, success.Tokens[^1].Type);
       }
       else {
         Assert.NotNull(result.Tokens);
@@ -89,11 +91,61 @@ namespace Indra.Astra.Tests {
       return found is not null;
     }
 
-    public static void Assert_IsSequence(
-      this Lexer.Result result,
+    public static Result Assert_IsSequence(
+      this Result result,
       params TokenType[] types
     ) {
+      Tokens._assert(result, result => {
+        Assert.NotNull(result.Tokens);
+        Assert.Equal(types.Where(t => t is not None).Count(), result.Tokens.Length - 1);
 
+        int index =0;
+        foreach(TokenType type in types) {
+          if(type == None.Type) {
+            continue;
+          }
+          else {
+            result.Tokens[index++].Assert_Is(result, type);
+          }
+        }
+
+        result.Tokens[^1].Assert_Is(result, EndOfFile.Type);
+      }, $"Result does not contain the expected sequence of tokens.\n\tExpected: {string.Join(
+          ", ", types.Select(t => t.Name)
+      )}.\n\tActual: {string.Join(
+          ", ", result.Tokens?.Select(t => t.Name) ?? []
+      )}.");
+
+      return result;
+    }
+
+    public static Token Assert_At(
+      this Result result,
+      int index,
+      IToken type,
+      string? text = null,
+      (int start, int end)? position = null
+    ) {
+      Tokens._assert(result, result => {
+        Assert.NotNull(result.Tokens);
+        Assert.True(index >= 0 && index < result.Tokens.Length);
+
+        result.Tokens[index].Assert_Is(result, type, text, position);
+      }, $"Result does not contain a token at the specified index.\n\tIndex: {index}.\n\tExpected: {type.Name}{(
+          text is not null
+              ? $" = \"{text}\""
+              : ""
+        )}{(
+          position is not null
+              ? $" @ ({position.Value.start} -> {position.Value.end})"
+              : ""
+      )}.\n\tActual: {((result.Tokens?.Length ?? -1) > index
+        ? result.Tokens![index].Name
+        : None.Type.Name
+      )}.");
+
+      return result.Tokens![index];
     }
   }
 }
+
